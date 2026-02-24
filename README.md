@@ -3,223 +3,108 @@
 
 # podScout
 
-Lean RunPod GPU watcher. Network-volume aware.  
-No UI. No dashboards. Just signal.
+Lean RunPod GPU watcher. Network-volume aware.
 
-Author: dancesWithNodes  
-License: MIT  
+No UI. No dashboards. No watching the marketplace like a dying heart monitor.
 
----
+Just signal.
 
-## 🎯 What This Does
+## 🚀 Quick Start
 
-Polls RunPod’s API.  
-Checks availability for specific GPU types.  
-Optionally restricts to a datacenter.  
-Optionally infers that datacenter from a network volume.  
-Optionally sends Pushover notifications.  
+### Requirements
 
-That’s it.
+- Python 3.9+
+- RunPod API key
 
-If a GPU becomes available, you’ll know.  
-If it doesn’t, you’ll wait. Like the rest of us.
+### Optional
 
----
+- Pushover App Token & User Key for notifications
 
-## 🧠 Design Principles
+### Install
 
-- Explicit wins.
-- Environment variables override fallbacks.
-- Fail fast.
-- No magic.
-- No external config files.
-- One flag. `--once`. That’s the list.
-
-If something is misconfigured, it errors. Immediately.  
-If an API field changes, it retries. Then errors.
-
-Garbage in, garbage out.
-
----
-
-## ⚙ Configuration
-
-Edit variables at the top of `podScout.py`.
-
-Secrets should be provided via environment variables:
-
+```bash
+pip install requests
 ```
+
+### Set secrets
+
+```bash
 export RUNPOD_API_KEY=your_key
 export PUSHOVER_APP_TOKEN=your_token
 export PUSHOVER_USER_KEY=your_user
 ```
 
-Fallback constants exist for local testing.  
-Env vars win.
+### Run
 
-### Region Routing Logic
-
-Precedence is explicit:
-
-1. `DATACENTER_ID` set → used directly.
-2. Else if `NETWORK_VOLUME_ID` set → datacenter inferred from volume.
-3. Else → global pool.
-
-If both are set and disagree → hard failure.  
-No guessing.
-
----
-
-## 🌐 Market Mode
-
-`MARKET_MODE` supports:
-
-- `secure`
-- `community`
-- `both`
-- `""` (auto)
-
-Auto mode:
-- If `NETWORK_VOLUME_ID` exists → defaults to `secure`
-- Else → defaults to `both`
-
-Deterministic. No surprises.
-
----
-
-## 🖥 GPU Targets
-
-Use `WATCH_GPU_TYPE_IDS`.
-
-Prefer internal `gpuTypeId` values.  
-Display names may work. Until they don’t.
-
-Example:
-
-```python
-WATCH_GPU_TYPE_IDS = [
-    "NVIDIA GeForce RTX 5090",
-]
+```bash
+python podScout.py
 ```
 
-If this list is empty → error.  
-Because of course.
+## ⚙️ Config
 
----
+Edit values at the top of `podScout.py`.
 
-## 📊 Availability Classification
+Environment variables win. Fallbacks exist. Do not commit secrets.
 
-Availability is derived from:
+### Key fields
 
-- `maxUnreservedGpuCount`
-- `availableGpuCounts`
+- `WATCH_GPU_TYPE_IDS`
+- `DATACENTER_ID`
+- `NETWORK_VOLUME_ID`
+- `MARKET_MODE`
+- `ENABLE_PUSHOVER`
 
-Logic:
+Prefer internal `gpuTypeId` values. Display names may work until they do not.
 
-- 0 → 🔴 Unavailable
-- 1 → 🟠 Low
-- 2 → 🟡 Medium
-- ≥3 → 🟢 High
+## 📐 Routing Logic
 
-If the API returns nothing → treated as unavailable.  
-No dice.
+Deterministic:
 
----
+1. `DATACENTER_ID` -> used.
+2. Else `NETWORK_VOLUME_ID` -> infer datacenter.
+3. Else -> global.
+4. If both disagree -> exit.
+
+No guessing. No silent overrides.
+
+Using a network volume? Your pod must spawn in the same datacenter as the storage.
+If that datacenter has no GPUs available, you are stuck watching nothing happen.
+
+This script tells you that quickly.
+
+## 🧪 CLI Flags (or lack thereof)
+
+### `--once`
+
+Exit codes:
+
+- `0` -> available
+- `1` -> not available
+- `2` -> error
+- Anything else -> error
+
+No flag zoo.
 
 ## 🔔 Notifications
 
 Optional. Disabled by default.
 
-Two modes:
+- State-change mode
+- Periodic mode
+- Cooldowns enforced
 
-### State Change Mode (default)
+No notification storms.
 
-Notify only when availability changes from false → true.  
-Cooldown controlled by:
+## 📜 Philosophy
 
-```
-STATE_CHANGE_NOTIFY_COOLDOWN_SECONDS
-```
+Fail fast. No hidden config. No external JSON. No feature creep.
 
-### Periodic Mode
+It polls. It checks. It notifies.
 
-Notify repeatedly while available.  
-Cooldown controlled by:
+If GPUs exist, you will know.
+If they do not, at least you will not waste an hour clicking refresh.
 
-```
-PUSHOVER_COOLDOWN_SECONDS
-```
-
-If cooldown active → suppressed. Calmly.
-
----
-
-## 🧪 CLI Flags
-
-Supported flags:
-
-```
---once
-```
-
-That’s it.
-
-Behavior:
-
-- Runs a single check.
-- Exit code `0` if any GPU available.
-- Exit code `1` if none available.
-- Exit code `2` on error.
-
-Any other flag → immediate failure.
-
-No argparse circus. No shorthand flags. No config files.
-
----
-
-## 📦 Installation
-
-Requires Python 3.9+
-
-Dependency:
-
-```
-pip install requests
-```
-
-That’s the only one.
-
----
-
-## ▶ Run
-
-Continuous mode:
-
-```
-python podScout.py
-```
-
-Single check:
-
-```
-python podScout.py --once
-```
-
----
-
-## 💥 Failure Modes
-
-Common examples:
-
-- Missing `RUNPOD_API_KEY` → error.
-- Invalid `DATACENTER_ID` → validation fails.
-- Volume cannot resolve datacenter → error.
-- Unknown CLI argument → error.
-
-Messages are blunt.  
-You’ll know what broke.
-
----
+That is it.
 
 ## 🤖 AI Assistance
 
@@ -227,13 +112,3 @@ Portions of this project were generated or refined with the assistance of GPT-5.
 Core logic and design decisions are mine. Boilerplate and repetitive scaffolding were delegated.
 
 Human-reviewed. No blind merges.
-
----
-
-## 🧾 License
-
-MIT
-
-Do what you want.  
-If it works, great.  
-If it doesn’t, you have the source.
